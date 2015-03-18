@@ -1,0 +1,9 @@
+- name: Restart Postgres
+  sudo: yes
+  service: name=postgresql state=restarted
+
+- name: Install Bundler
+  gem: >
+    name=bundler
+    user_install=no
+    state=latest

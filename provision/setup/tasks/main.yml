@@ -1,0 +1,86 @@
+- name: Install packages
+  sudo: yes
+  apt: pkg={{ item }} state=installed update_cache=yes
+  with_items:
+    # Database
+    - postgresql-9.3
+    - postgresql-contrib-9.3
+    - libpq-dev # Required for Ansible to interact with postgres
+    - python-psycopg2 # Required for Ansible to interact with postgres
+
+    # Python Dev
+    - python-dev
+    - python-setuptools
+    - python-virtualenv
+
+    - autoconf
+    - automake
+    - bison
+    - build-essential
+    - curl
+    - gawk
+    - git-core
+    - git
+    - libxml2-dev
+    - libffi-dev
+    - libyaml-dev
+    - libssl-dev
+    - libsqlite3-dev
+    - libgdbm-dev
+    - libncurses5-dev
+    - libreadline6-dev
+    - libtool
+    - libyaml-dev
+    - nfs-common # make virtualbox faster
+    - pkg-config
+    - sqlite3
+    - vim
+    - zlib1g-dev
+
+    - nodejs
+    - libmysqlclient-dev
+# - name: Install RVM
+#   shell: "curl -sSL https://get.rvm.io | bash -s stable --ruby"
+
+- name: Install RVM
+  shell: "curl -sSL https://get.rvm.io | bash"
+  # notify:
+  #   - Install Ruby 2.1.3
+
+- name: Remove system ruby version
+  apt: pkg= state=absent purge=yes
+  with_items:
+    - ruby
+    - ruby1.9.1
+    - libruby1.9.1
+
+- name: Allow password authentication for local socket users
+  sudo: yes
+  copy: src=pg_hba.conf dest=/etc/postgresql/9.3/main/pg_hba.conf force=yes
+  notify:
+    - Restart Postgres
+
+- name: Install hstore and citext extensions
+  sudo: yes
+  sudo_user: postgres
+  command: >
+    psql template1 -c 'CREATE EXTENSION IF NOT EXISTS "{{item}}"'
+  with_items:
+    - hstore
+    - citext
+
+- name: Create Database
+  sudo: yes
+  sudo_user: postgres
+  postgresql_db: name={{ db_name }}
+
+- name: Create User
+  sudo: yes
+  sudo_user: postgres
+  postgresql_user: name={{ db_user }} password={{ db_password }} state=present role_attr_flags=NOSUPERUSER,CREATEDB
+
+- name: Provide user with DB permissions
+  sudo: yes
+  sudo_user: postgres
+  postgresql_user: user={{ db_user }} db={{ db_name }} priv=ALL
+
